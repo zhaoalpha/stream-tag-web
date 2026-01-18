@@ -1,0 +1,40 @@
+/* src/assets/main.css */
+
+:root {
+    /* 基础颜色 - 严格复刻图片 */
+    --bg-deep: #050505;
+    --bg-panel: rgba(255, 255, 255, 0.03);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.4);
+    --accent-green: #00ffaa;
+
+    /* 间距与圆角 */
+    --radius-lg: 1.5rem;
+    --radius-md: 0.75rem;
+
+    /* 默认 1K 屏 (1920px) 基础字号 */
+    font-size: 16px;
+}
+
+/* 适配 2K 屏 */
+@media (min-width: 2560px) {
+    :root {
+        font-size: 20px;
+    }
+}
+
+/* 适配 4K 屏 */
+@media (min-width: 3840px) {
+    :root {
+        font-size: 32px;
+    }
+}
+
+body {
+    background-color: var(--bg-deep);
+    color: var(--text-primary);
+    margin: 0;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    overflow: hidden; /* 防止出现双滚动条 */
+}
