@@ -5,11 +5,13 @@ import TagLabView from '@/views/TagLabView.vue'
 import SegmentView from '@/views/SegmentView.vue'
 import Dashboard from '@/views/dashboard.vue'
 import Notification from '@/views/Notification.vue'
+import Main from '@/views/Main.vue'
 // 1. 当前选中的页面 ID
-const currentTab = ref('tag')
+const currentTab = ref('home')
 
 // 2. 简单的视图映射逻辑
 const activeView = computed(() => {
+  if (currentTab.value === 'home') return Main
   if (currentTab.value === 'tag') return TagLabView
   if (currentTab.value === 'segment') return SegmentView
   if (currentTab.value === 'insight') return Dashboard
@@ -22,36 +24,54 @@ const activeView = computed(() => {
   <div class="aether-container">
     <MainHeader :active-id="currentTab" @change="(id) => (currentTab = id)" />
 
-    <Transition name="page-fade" mode="out-in">
+    <Transition name="page-glassy" mode="out-in">
       <component :is="activeView" />
     </Transition>
   </div>
 </template>
 
 <style>
-/* 这里只保留全局基础背景和容器样式 */
+/* --- 全局容器保持锁定 --- */
 .aether-container {
   height: 100vh;
+  width: 100vw;
   display: flex;
   flex-direction: column;
-  background-color: #050505;
+  background-color: #000; /* 建议纯黑，更显银河深度 */
   overflow: hidden;
+  position: relative;
 }
 
-/* 页面切换的淡入淡出动效 */
-.page-fade-enter-active,
-.page-fade-leave-active {
+/* --- 方案一核心：极简虚化 (Glassy Blur) --- */
+
+/* 1. 定义动画的时间曲线 */
+.page-glassy-enter-active,
+.page-glassy-leave-active {
+  /* 使用 Apple 惯用的准则：0.5s + 特定的缓动函数 */
   transition:
-    opacity 0.3s ease,
-    transform 0.3s ease;
+    opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    filter 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.page-fade-enter-from {
+
+/* 2. 入场状态：从模糊、稍微放大、透明的状态进入 */
+.page-glassy-enter-from {
   opacity: 0;
-  transform: translateY(10px);
+  filter: blur(20px);      /* 强烈虚化 */
+  transform: scale(1.05);  /* 略微放大，产生“扑面而来”的入场感 */
 }
-.page-fade-leave-to {
+
+/* 3. 离场状态：向模糊、稍微缩小、透明的状态消失 */
+.page-glassy-leave-to {
   opacity: 0;
-  transform: translateY(-10px);
+  filter: blur(15px);      /* 虚化消失 */
+  transform: scale(0.98);  /* 略微缩小，产生“向深处退去”的离场感 */
+}
+
+/* 💡 性能优化：防止动画过程中的布局闪烁 */
+.page-glassy-enter-active {
+  position: relative;
+  z-index: 2;
 }
 </style>
 <!-- App.vue -->
