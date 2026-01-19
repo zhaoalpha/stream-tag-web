@@ -1,0 +1,60 @@
+/**
+ * TagLab 2.0 全局主题样式
+ * 作用：统一“白月光”科技感视觉，管理流光动画
+ */
+
+:root {
+    /* 基础配色：暗黑工业风 */
+    --aether-bg: #050505;
+    --aether-glass: rgba(255, 255, 255, 0.03);
+    --aether-border: rgba(255, 255, 255, 0.08);
+
+    /* 状态配色：启用绿 vs 琥珀橙 */
+    --status-green: #00ffaa;
+    --status-orange: #ff8c00;
+
+    /* 字体标准 */
+    --font-main: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+}
+
+/* 1. 统一的横向分割线样式 */
+.header-divider {
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(90deg, var(--aether-border) 0%, transparent 100%);
+    margin: 10px 0;
+}
+
+/* 2. 统一的垂直分割线样式 */
+.v-divider {
+    width: 1px;
+    background: var(--aether-border);
+    opacity: 0.5;
+}
+
+/* 3. 底部双态流光动画核心逻辑 */
+@keyframes flow-glow {
+    0% {
+        background-position: -100% 0;
+    }
+    100% {
+        background-position: 100% 0;
+    }
+}
+
+.flow-base {
+    height: 1px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.flow-base::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-size: 200% 100%;
+    animation: flow-glow 4s linear infinite;
+}

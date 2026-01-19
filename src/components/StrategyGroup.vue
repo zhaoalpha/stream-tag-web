@@ -68,7 +68,7 @@ import { Trash2 } from 'lucide-vue-next'
     </div>
 
     <div class="layer-content">
-      <div v-if="groupData.tags.length === 0" class="empty-hint">DROP ATOMS HERE</div>
+      <div v-if="groupData.tags.length === 0" class="empty-hint">拖拽字段到策略组</div>
       <div v-else class="tag-list">
         <TransitionGroup name="list-slide">
           <TagRow
