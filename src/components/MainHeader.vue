@@ -5,9 +5,9 @@ import {
   Tags,
   Users,
   Zap,
-  ShieldCheck,
   MonitorPlay, // 大屏展示图标
-  User
+  User,
+  Home,
 } from 'lucide-vue-next'
 
 interface NavItem {
@@ -24,10 +24,10 @@ const props = defineProps<{
 const emit = defineEmits(['change'])
 
 const navItems = ref<NavItem[]>([
+  { id: 'home', label: '首页', icon: markRaw(Home) },
   { id: 'tag', label: '标签工作台', icon: markRaw(Tags) },
   { id: 'segment', label: '分群矩阵', icon: markRaw(Users) },
   { id: 'reach', label: '触达中枢', icon: markRaw(Zap) },
-  { id: 'strategy', label: '策略演练', icon: markRaw(ShieldCheck) },
   { id: 'insight', label: '以太全景', icon: markRaw(MonitorPlay) },
 ])
 
@@ -41,7 +41,7 @@ const handleNavClick = (id: string) => {
     <div class="logo-section">
       <div class="logo-glow"></div>
       <span class="logo-main">STREAM TAG</span>
-      <span class="logo-sub">QUANTGROUP</span>
+      <span class="logo-sub">QUANT GROUP</span>
     </div>
 
     <nav class="nav-capsule">

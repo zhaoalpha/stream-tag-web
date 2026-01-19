@@ -38,7 +38,7 @@ interface Group {
  * 2. 响应式状态声明
  */
 // 标题名称，支持双向绑定
-const tagName = ref('请输入标签名称')
+const tagName = ref('')
 
 // 定义表名类型
 type TableName = 'user_profile' | 'order_info' | 'device_data'
@@ -46,9 +46,13 @@ type TableName = 'user_profile' | 'order_info' | 'device_data'
 // 模拟多表数据源
 const tableData: Record<TableName, Atom[]> = {
   user_profile: [
-    { id: 1, name: 'user_age', label: '用户年龄' },
-    { id: 2, name: 'gender', label: '用户性别' },
-    { id: 3, name: 'city_level', label: '城市等级' },
+    { id: 1, name: 'register_time', label: '注册时间' },
+    { id: 2, name: 'apply_time', label: '授信时间' },
+    { id: 3, name: 'amount', label: '授信额度' },
+    { id: 4, name: 'credit_type', label: '授信状态' },
+    { id: 5, name: 'trans_time', label: '交易时间' },
+    { id: 6, name: 'trans_amount', label: '交易金额' },
+    { id: 7, name: 'regist_from_name', label: '注册渠道' },
   ],
   order_info: [
     { id: 101, name: 'pay_amt', label: '累计消费金额' },
@@ -133,7 +137,6 @@ const handleUpdateTags = (groupId: number, newTags: ActiveTag[]) => {
 
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import { Search, ChevronDown } from 'lucide-vue-next'
-import MainHeader from '@/components/MainHeader.vue'
 
 // 定义弹窗控制状态
 const showDeleteModal = ref(false)
@@ -141,6 +144,10 @@ const pendingDeleteId = ref<number | null>(null)
 
 // 修改删除函数：先打开弹窗，暂存 ID
 const openDeleteConfirm = (groupId: number) => {
+  if (groups.value.length <= 1) {
+    triggerToast('请至少保留一个分组')
+    return
+  }
   pendingDeleteId.value = groupId
   showDeleteModal.value = true
 }
@@ -177,12 +184,15 @@ const handleSearchBlur = () => {
 // 1. 定义存档卡片的接口
 interface ArchiveRecord {
   id: string
-  title: string // 存档名称
-  tableName: string // 所属表名（例如: USER_PROFILE）
-  groupCount: number // 包含多少个策略组
-  tagCount: number // 总共有多少个标签/条件
-  createdAt: string // 格式化后的时间
-  logicData: any[] // 核心数据：保存当时的 strategyGroups
+  title: string
+  tableName: string // 数据源
+  totalCount: number // 总人数
+  coverage: string // 覆盖率 (如 "12.5%")
+  isActive: boolean // 标签是否启用
+  createdAt: string
+  groupCount: number
+  tagCount: number
+  logicData: any[]
 }
 
 // 1. Toast 状态
@@ -202,6 +212,25 @@ const triggerToast = (msg: string) => {
 
 // 2. 创建存档列表的状态
 const archives = ref<ArchiveRecord[]>([])
+const isSyncing = ref(false) // 2. 新增：同步状态锁
+
+// 处理传给后端的json结构
+const preparePayload = () => {
+  return {
+    title: tagName.value === '请输入标签名称' ? '未命名策略' : tagName.value,
+    table: currentTable.value.toLowerCase(),
+    groups: groups.value.map((group) => ({
+      // 1. 将逻辑转为小写 (AND -> and)
+      logic: group.logic.toLowerCase(),
+      // 2. 映射规则字段
+      rules: group.tags.map((tag) => ({
+        field: tag.name, // 对应后端的 age, gender 等标识
+        operator: tag.operator,
+        value: tag.value,
+      })),
+    })),
+  }
+}
 
 const handleSaveStrategy = () => {
   if (groups.value.length === 0 || groups.value[0].tags.length === 0) {
@@ -216,13 +245,23 @@ const handleSaveStrategy = () => {
 
   // 1. 执行现有的保存逻辑 (创建 newArchive 并推入 archives 数组)
   const totalTags = groups.value.reduce((sum, group) => sum + group.tags.length, 0)
+
+  const mockTotal = Math.floor(Math.random() * 100000) + 5000
+  const mockMale = Math.floor(mockTotal * 0.45)
+  const mockFemale = mockTotal - mockMale
+  const isActive = Math.random() >= 0.5
   const newArchive: ArchiveRecord = {
     id: Date.now().toString(),
-    title: currentTitle,
     tableName: currentTable.value.toUpperCase(),
+    coverage: '12.4%', // 暂时模拟，或从后端获取
+    isActive: isActive,
+    title: currentTitle,
     groupCount: groups.value.length,
     tagCount: totalTags,
     createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    totalCount: mockTotal,
+    maleCount: mockMale,
+    femaleCount: mockFemale,
     logicData: JSON.parse(JSON.stringify(groups.value)),
   }
   archives.value.unshift(newArchive)
@@ -251,6 +290,80 @@ const handleSaveStrategy = () => {
     ]
     tagName.value = '请输入标签名称'
   }, 100) // 100ms 的错峰，让canvas-top-barcanvas-top-bar视觉更灵动
+}
+
+const handleSaveStrategyv2 = async () => {
+  if (groups.value.length === 0 || groups.value[0].tags.length === 0) {
+    alert('当前工作台为空，无法保存')
+    return
+  }
+
+  const payload = preparePayload()
+  isSyncing.value = true
+  console.log('即将传给后端的数据：', JSON.stringify(payload, null, 2))
+  triggerToast('COMMAND: SYNCING DATA...')
+
+  try {
+    // 4. 正式发送给后端
+    // 1. 捕捉返回值
+    const response = await tagApi.saveStrategy(payload)
+
+    // 2. 在控制台打印完整的返回对象
+    console.log('【接口返回原始数据】:', response)
+
+    // 5. 成功后的反馈与动画
+    triggerToast('SUCCESS: STRATEGY SYNCHRONIZED')
+
+    // 执行存档到右侧列表 (本地显示可以保留 UI 字段，方便回填)
+    archives.value.unshift({
+      id: Date.now().toString(),
+      title: payload.title,
+      tableName: currentTable.value.toUpperCase(),
+      groupCount: groups.value.length,
+      tagCount: groups.value.reduce((s, g) => s + g.tags.length, 0),
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      logicData: JSON.parse(JSON.stringify(groups.value)), // 本地存“厚”数据
+    })
+
+    // 飘散重置动画
+    groups.value = []
+    setTimeout(() => {
+      groups.value = [{ id: Date.now(), logic: 'AND', tags: [] }]
+      tagName.value = '请输入标签名称'
+    }, 100)
+  } catch (error) {
+    console.error('保存失败:', error)
+    triggerToast('ERROR: CONNECTION REFUSED')
+  } finally {
+    isSyncing.value = false
+  }
+
+  // archives.value.unshift(newArchive)
+  // triggerToast('STRATEGY SAVED SUCCESSFULLY')
+  //
+  // nextTick(() => {
+  //   if (archiveScrollRef.value) {
+  //     archiveScrollRef.value.scrollTo({
+  //       top: 0,
+  //       behavior: 'smooth', // 丝滑滚动
+  //     })
+  //   }
+  // })
+  //
+  // // 2. 触发动画：先清空，让旧卡片“飘走”
+  // groups.value = []
+  //
+  // // 3. 延迟一瞬间，再放入新的默认 AND 组，让它“弹入”
+  // setTimeout(() => {
+  //   groups.value = [
+  //     {
+  //       id: Date.now(),
+  //       logic: 'AND',
+  //       tags: [],
+  //     },
+  //   ]
+  //   tagName.value = '请输入标签名称'
+  // }, 100) // 100ms 的错峰，让canvas-top-barcanvas-top-bar视觉更灵动
 }
 
 // 3. 【新增】点击右侧存档，还原数据到中间
@@ -375,7 +488,7 @@ const handleArchiveSearchBlur = () => {
 
       <section class="canvas-area">
         <div class="canvas-top-bar">
-          <input type="text" v-model="tagName" class="title-input" />
+          <input type="text" v-model="tagName" placeholder="请输入标签名称" class="title-input" />
           <div class="status-badge">
             <span class="dot"></span>
             STATUS: ACTIVE
@@ -402,7 +515,7 @@ const handleArchiveSearchBlur = () => {
           </TransitionGroup>
 
           <div v-if="groups.length === 0" class="canvas-empty-guide">
-            点击下方 “新增策略组” 开始构建逻辑
+            点击下方新增策略组始构建逻辑
           </div>
         </div>
 
@@ -446,7 +559,7 @@ const handleArchiveSearchBlur = () => {
             <div
               v-for="record in filteredArchives"
               :key="record.id"
-              class="archive-card"
+              class="archive-card viz-style"
               @click="loadArchive(record)"
             >
               <div class="archive-card-header">
@@ -454,19 +567,39 @@ const handleArchiveSearchBlur = () => {
                 <span class="archive-time">{{ record.createdAt }}</span>
               </div>
 
+              <div class="header-divider"></div>
+
               <div class="archive-card-body">
-                <div class="meta-item">
-                  <span class="meta-label">SOURCE:</span>
-                  <span class="meta-value">{{ record.tableName }}</span>
+
+                <div class="info-block system-group">
+                  <div class="data-unit">
+                    <span class="unit-label">数据源</span>
+                    <span class="unit-value uppercase">{{ record.tableName }}</span>
+                  </div>
+                  <div class="status-box" :class="record.isActive ? 'is-active' : 'is-pending'">
+                    <span class="status-dot"></span>
+                    <span class="status-text">{{ record.isActive ? '已启用' : '未启用' }}</span>
+                  </div>
                 </div>
-                <div class="meta-row">
-                  <span>{{ record.groupCount }} GROUPS</span>
-                  <span class="divider">/</span>
-                  <span>{{ record.tagCount }} TAGS</span>
+
+                <div class="v-divider"></div>
+
+                <div class="info-block result-group">
+                  <div class="data-unit text-right">
+                    <span class="unit-label">覆盖率</span>
+                    <span class="unit-value highlight">{{ record.coverage }}</span>
+                  </div>
+                  <div class="data-unit text-right">
+                    <span class="unit-label">总人数</span>
+                    <span class="total-count-huge">{{ record.totalCount.toLocaleString() }}</span>
+                  </div>
                 </div>
               </div>
 
-              <div class="shimmer-effect"></div>
+              <div
+                class="bottom-flow-line"
+                :class="record.isActive ? 'flow-green' : 'flow-orange'"
+              ></div>
             </div>
           </TransitionGroup>
 
@@ -1446,5 +1579,251 @@ const handleArchiveSearchBlur = () => {
 .action-btn-unified:active {
   transform: translateY(0) scale(0.97);
   background: rgba(255, 255, 255, 0.12);
+}
+
+.title-input::placeholder {
+  color: rgba(255, 255, 255, 0.2); /* 淡淡的半透明白 */
+  font-weight: 400;
+}
+
+.title-input:focus {
+  border-bottom-color: rgba(0, 255, 170, 0.3); /* 聚焦时底部现出一抹青色 */
+}
+
+/* 总人数行 */
+.total-audience-row {
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.total-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px; /* 大字号突出人数 */
+  color: #fff;
+  font-weight: 600;
+}
+
+/* 男女分布网格 */
+.demographic-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.demo-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.demo-label {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 1px;
+}
+
+.demo-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+/* --- 1. 基础卡片容器 --- */
+.archive-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.archive-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+}
+
+/* --- 2. 顶部标题区 --- */
+.archive-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.archive-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 1px;
+}
+
+.archive-time {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.header-divider {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0%, transparent 100%);
+  margin: 10px 0 16px 0;
+}
+
+/* --- 1. 卡片与基础布局 --- */
+.archive-card {
+  position: relative;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+.archive-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateY(-2px);
+}
+
+.header-divider {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0%, transparent 100%);
+  margin: 10px 0 14px 0;
+}
+
+/* --- 2. 核心数据块分组 --- */
+.archive-card-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+}
+
+.info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px; /* 增加块内间距 */
+  flex: 1;
+}
+
+/* 左侧框：靠左对齐 */
+.system-group { align-items: flex-start; }
+
+/* 右侧框：靠右对齐 */
+.result-group { align-items: flex-end; }
+
+.data-unit {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.unit-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.5px;
+}
+
+.unit-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.text-right { text-align: right; }
+.uppercase { text-transform: uppercase; }
+
+/* --- 3. 状态指示系统 (琥珀橙与青绿) --- */
+.status-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.status-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+}
+
+/* 启用态 */
+.is-active .status-dot {
+  background: #00ffaa;
+  box-shadow: 0 0 8px rgba(0, 255, 170, 0.6);
+}
+.is-active .status-text { color: #00ffaa; opacity: 0.8; font-size: 10px; }
+
+/* 禁用态 (琥珀色) */
+.is-pending .status-dot {
+  background: #ff8c00;
+  box-shadow: 0 0 8px rgba(255, 140, 0, 0.5);
+}
+.is-pending .status-text { color: #ff8c00; opacity: 0.6; font-size: 10px; }
+
+/* --- 4. 核心数值展示 --- */
+.total-count-huge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+.v-divider {
+  width: 1px;
+  background: rgba(255, 255, 255, 0.04);
+  margin: 0 20px;
+}
+
+/* --- 5. 底部双态流光动画 --- */
+.bottom-flow-line {
+  height: 1px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  margin-top: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.bottom-flow-line::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-size: 200% 100%;
+  animation: flow-glow 4s linear infinite;
+}
+
+/* 绿色流光 */
+.flow-green::after {
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 170, 0.4), transparent);
+  filter: drop-shadow(0 0 2px rgba(0, 255, 170, 0.4));
+}
+
+/* 橘色流光 */
+.flow-orange::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 140, 0, 0.35), transparent);
+  filter: drop-shadow(0 0 2px rgba(255, 140, 0, 0.3));
+}
+
+@keyframes flow-glow {
+  0% { background-position: -100% 0; }
+  100% { background-position: 100% 0; }
 }
 </style>

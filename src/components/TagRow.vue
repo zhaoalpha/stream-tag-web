@@ -33,7 +33,7 @@ watch(localValue, (newVal) => {
 })
 
 // 可选的运算符列表
-const operators = ['>', '>=', '=', '<=', '<']
+const operators = ['>', 'equals', '>=', 'before', '=', '<=', '<', 'after']
 
 // 1. 控制下拉菜单的状态
 const isOpOpen = ref(false)
@@ -196,9 +196,9 @@ import { X } from 'lucide-vue-next'
 /* 触发器（当前选中的操作符） */
 .op-trigger {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 10px;
+  align-items: center; /* 垂直居中 */
+  justify-content: center; /* 水平居中 */
+  padding: 4px 15px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
