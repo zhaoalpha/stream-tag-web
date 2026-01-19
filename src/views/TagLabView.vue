@@ -185,14 +185,12 @@ const handleSearchBlur = () => {
 interface ArchiveRecord {
   id: string
   title: string
-  tableName: string // 数据源
-  totalCount: number // 总人数
-  coverage: string // 覆盖率 (如 "12.5%")
-  isActive: boolean // 标签是否启用
+  tableName: string // 数据源 (系统组)
+  isActive: boolean // 状态 (系统组)
+  totalCount: number // 总人数 (业务组)
+  coverage: string // 覆盖率 (业务组)
   createdAt: string
-  groupCount: number
-  tagCount: number
-  logicData: any[]
+  logicData: any[] // 画布还原数据
 }
 
 // 1. Toast 状态
@@ -232,7 +230,7 @@ const preparePayload = () => {
   }
 }
 
-const handleSaveStrategy = () => {
+const handleSaveStrategyV2 = () => {
   if (groups.value.length === 0 || groups.value[0].tags.length === 0) {
     alert('当前工作台为空，无法保存')
     return
@@ -292,78 +290,59 @@ const handleSaveStrategy = () => {
   }, 100) // 100ms 的错峰，让canvas-top-barcanvas-top-bar视觉更灵动
 }
 
-const handleSaveStrategyv2 = async () => {
+const handleSaveStrategy = async () => {
+  // 1. 基础校验
   if (groups.value.length === 0 || groups.value[0].tags.length === 0) {
-    alert('当前工作台为空，无法保存')
+    triggerToast('工作台内容为空，无法生成策略')
     return
   }
 
   const payload = preparePayload()
   isSyncing.value = true
-  console.log('即将传给后端的数据：', JSON.stringify(payload, null, 2))
-  triggerToast('COMMAND: SYNCING DATA...')
+  triggerToast('COMMAND: SYNCING...')
 
   try {
-    // 4. 正式发送给后端
-    // 1. 捕捉返回值
+    // 2. 发送同步请求
     const response = await tagApi.saveStrategy(payload)
+    console.log('【后端响应成功】:', response)
 
-    // 2. 在控制台打印完整的返回对象
-    console.log('【接口返回原始数据】:', response)
+    // 假设后端返回结构为 response.data.total_audience
+    const serverTotal = response
 
-    // 5. 成功后的反馈与动画
-    triggerToast('SUCCESS: STRATEGY SYNCHRONIZED')
-
-    // 执行存档到右侧列表 (本地显示可以保留 UI 字段，方便回填)
-    archives.value.unshift({
-      id: Date.now().toString(),
+    // 4. 构建符合“分组镜像布局”的存档记录
+    const newRecord: ArchiveRecord = {
+      id:Date.now().toString(),
       title: payload.title,
-      tableName: currentTable.value.toUpperCase(),
-      groupCount: groups.value.length,
-      tagCount: groups.value.reduce((s, g) => s + g.tags.length, 0),
-      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      logicData: JSON.parse(JSON.stringify(groups.value)), // 本地存“厚”数据
-    })
 
-    // 飘散重置动画
+      // --- 系统属性组 ---
+      tableName: currentTable.value.toUpperCase(),
+      isActive: true, // 默认开启保存即启用，或根据后端返回设置
+
+      // --- 业务结果组 ---
+      totalCount: serverTotal,
+      coverage: '12.4%', // 目前由于不计算，可先固定展示或由后端返回
+
+      // --- 元数据 ---
+      createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      logicData: JSON.parse(JSON.stringify(groups.value)), // 深度克隆用于回填
+    }
+
+    // 5. 压入存档列表前端 (带位移动画)
+    archives.value.unshift(newRecord)
+    triggerToast('SUCCESS: STRATEGY ARCHIVED')
+
+    // 6. 执行工作台清空动画
     groups.value = []
     setTimeout(() => {
       groups.value = [{ id: Date.now(), logic: 'AND', tags: [] }]
       tagName.value = '请输入标签名称'
-    }, 100)
+    }, 120)
   } catch (error) {
-    console.error('保存失败:', error)
+    console.error('同步失败:', error)
     triggerToast('ERROR: CONNECTION REFUSED')
   } finally {
     isSyncing.value = false
   }
-
-  // archives.value.unshift(newArchive)
-  // triggerToast('STRATEGY SAVED SUCCESSFULLY')
-  //
-  // nextTick(() => {
-  //   if (archiveScrollRef.value) {
-  //     archiveScrollRef.value.scrollTo({
-  //       top: 0,
-  //       behavior: 'smooth', // 丝滑滚动
-  //     })
-  //   }
-  // })
-  //
-  // // 2. 触发动画：先清空，让旧卡片“飘走”
-  // groups.value = []
-  //
-  // // 3. 延迟一瞬间，再放入新的默认 AND 组，让它“弹入”
-  // setTimeout(() => {
-  //   groups.value = [
-  //     {
-  //       id: Date.now(),
-  //       logic: 'AND',
-  //       tags: [],
-  //     },
-  //   ]
-  //   tagName.value = '请输入标签名称'
-  // }, 100) // 100ms 的错峰，让canvas-top-barcanvas-top-bar视觉更灵动
 }
 
 // 3. 【新增】点击右侧存档，还原数据到中间
@@ -570,7 +549,6 @@ const handleArchiveSearchBlur = () => {
               <div class="header-divider"></div>
 
               <div class="archive-card-body">
-
                 <div class="info-block system-group">
                   <div class="data-unit">
                     <span class="unit-label">数据源</span>
@@ -1719,10 +1697,14 @@ const handleArchiveSearchBlur = () => {
 }
 
 /* 左侧框：靠左对齐 */
-.system-group { align-items: flex-start; }
+.system-group {
+  align-items: flex-start;
+}
 
 /* 右侧框：靠右对齐 */
-.result-group { align-items: flex-end; }
+.result-group {
+  align-items: flex-end;
+}
 
 .data-unit {
   display: flex;
@@ -1742,8 +1724,12 @@ const handleArchiveSearchBlur = () => {
   color: rgba(255, 255, 255, 0.7);
 }
 
-.text-right { text-align: right; }
-.uppercase { text-transform: uppercase; }
+.text-right {
+  text-align: right;
+}
+.uppercase {
+  text-transform: uppercase;
+}
 
 /* --- 3. 状态指示系统 (琥珀橙与青绿) --- */
 .status-box {
@@ -1764,14 +1750,22 @@ const handleArchiveSearchBlur = () => {
   background: #00ffaa;
   box-shadow: 0 0 8px rgba(0, 255, 170, 0.6);
 }
-.is-active .status-text { color: #00ffaa; opacity: 0.8; font-size: 10px; }
+.is-active .status-text {
+  color: #00ffaa;
+  opacity: 0.8;
+  font-size: 10px;
+}
 
 /* 禁用态 (琥珀色) */
 .is-pending .status-dot {
   background: #ff8c00;
   box-shadow: 0 0 8px rgba(255, 140, 0, 0.5);
 }
-.is-pending .status-text { color: #ff8c00; opacity: 0.6; font-size: 10px; }
+.is-pending .status-text {
+  color: #ff8c00;
+  opacity: 0.6;
+  font-size: 10px;
+}
 
 /* --- 4. 核心数值展示 --- */
 .total-count-huge {
@@ -1823,7 +1817,11 @@ const handleArchiveSearchBlur = () => {
 }
 
 @keyframes flow-glow {
-  0% { background-position: -100% 0; }
-  100% { background-position: 100% 0; }
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 100% 0;
+  }
 }
 </style>
