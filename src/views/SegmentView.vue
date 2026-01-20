@@ -5,11 +5,11 @@ import SegmentGroup from '../components/SegmentGroup.vue'
 
 // --- 1. 模拟人群数据 ---
 const mockAssets = ref([
-  { id: 'a1', title: '核心高净值用户', count: '12,402' },
-  { id: 'a2', title: '30日未下单沉默客', count: '5,120' },
-  { id: 'a3', title: 'Z世代数码极客', count: '8,841' },
-  { id: 'a4', title: '双十一回流老客', count: '21,034' },
-  { id: 'a5', title: '高频互动活跃粉丝', count: '3,445' },
+  { id: 'a1', title: '注册5分钟且未授信', count: '12,402' },
+  { id: 'a2', title: '授信10分钟且未下单', count: '5,120' },
+  { id: 'a3', title: '高价格敏感度用户', count: '8,841' },
+  { id: 'a4', title: '高流式概率用户', count: '21,034' },
+  { id: 'a5', title: '高逾期风险用户', count: '3,445' },
 ])
 
 // --- 2. 搜索逻辑：点击覆盖标题 ---

@@ -34,7 +34,7 @@ watch(localValue, (newVal) => {
 })
 
 // 可选的运算符列表
-const operators = ['before', 'after', '>=', '>', '=', '<=', '<']
+const operators = ['before', 'after','is null', '>=', '>', '=', '<=', '<']
 
 // 1. 控制下拉菜单的状态
 const isOpOpen = ref(false)

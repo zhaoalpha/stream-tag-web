@@ -8,14 +8,94 @@ import { tagApi } from '@/api/tag'
 const archives = ref([
   {
     id: 1,
-    title: '历史示例策略',
+    title: '注册5分钟且未授信用户',
+    time: '2026-01-20 10:00',
+    tableName: 'USER_PROFILE',
+    totalCount: '1,200',
+    status: 'inactive' as const,
+    logicData: [
+      {
+        id: Date.now(),
+        logic: 'AND',
+        tags: [
+          { name: 'register_time', label: '注册时间', operator: 'after', value: '5min' },
+          { name: 'apply_time', label: '授信状态', operator: 'is null', value: '' }
+        ]
+      }
+    ],
+  },
+  {
+    id: 2,
+    title: '授信10分钟且未下单用户',
+    time: '2026-01-20 10:00',
+    tableName: 'USER_PROFILE',
+    totalCount: '1,608',
+    status: 'active' as const,
+    // 💡 给默认存档加点内容，点击后画布才会有反应
+    logicData: [
+      {
+        id: Date.now(),
+        logic: 'AND',
+        tags: [
+          { name: 'apply_time', label: '授信时间', operator: 'after', value: '10min' },
+          { name: 'trans_time', label: '交易时间', operator: 'is null', value: '' }
+        ]
+      }
+    ],
+  },
+  {
+    id: 3,
+    title: '高价格敏感度用户',
+    time: '2026-01-20 10:00',
+    tableName: 'USER_PROFILE',
+    totalCount: '1,380',
+    status: 'inactive' as const,
+    logicData: [
+      {
+        id: Date.now(),
+        logic: 'AND',
+        tags: [
+          { name: 'price_sensitivity_score', label: '用户价格敏感度', operator: '=', value: '高' },
+        ]
+      }
+    ],
+  },
+  {
+    id: 4,
+    title: '高流失用户',
     time: '2026-01-20 10:00',
     tableName: 'USER_PROFILE',
     totalCount: '1,200',
     coverage: '13%',
-    status: 'inactive' as const,
-    logicData: [],
+    status: 'active' as const,
+    logicData: [
+      {
+        id: Date.now(),
+        logic: 'AND',
+        tags: [
+          { name: 'churn_probability', label: '用户流失概率', operator: '=', value: '高' },
+        ]
+      }
+    ],
   },
+  {
+    id: 5,
+    title: '高逾期风险用户',
+    time: '2026-01-20 10:00',
+    tableName: 'USER_PROFILE',
+    totalCount: '1,400',
+    coverage: '13%',
+    status: 'inactive' as const,
+    logicData: [
+      {
+        id: Date.now(),
+        logic: 'AND',
+        tags: [
+          { name: 'delinquency_probability', label: '用户逾期风险概率', operator: '=', value: '高' },
+        ]
+      }
+    ],
+  }
 ])
 
 // 💡 关键 2：搜索状态也建议全局化，防止组件切换时搜索词丢失

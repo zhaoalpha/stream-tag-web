@@ -3,7 +3,7 @@ import { ref, computed } from 'vue'
 import MainHeader from '@/components/MainHeader.vue'
 import TagLabView from '@/views/TagLabView.vue'
 import SegmentView from '@/views/SegmentView.vue'
-import Dashboard from '@/views/dashboard.vue'
+import Dashboard from '@/views/view.vue'
 import Notification from '@/views/Notification.vue'
 import Main from '@/views/Main.vue'
 // 1. 当前选中的页面 ID
