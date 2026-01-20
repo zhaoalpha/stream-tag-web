@@ -4,21 +4,15 @@
  * 职责：策略编排区 UI 容器
  * 视觉：支持 1k/2k/4k 响应式布局，具备紫色/青色渐变背景光晕
  */
-import { ref,watch } from 'vue'
+import { ref, watch } from 'vue'
 import { Plus, Check } from 'lucide-vue-next'
 import StrategyGroup from '@/components/StrategyGroup.vue'
 import ConfirmModal from '@/components/ConfirmModal.vue'
 import { useStrategyEngine } from '@/composables/useStrategyEngine'
-const isTitleError = ref(false); // 未输入标签名错误提示
+const isTitleError = ref(false) // 未输入标签名错误提示
 
 // 1. 获取核心引擎
-const {
-  tagName,
-  groups,
-  addStrategyGroup,
-  removeGroup,
-  updateGroupTags
-} = useStrategyEngine()
+const { tagName, groups, addStrategyGroup, removeGroup, updateGroupTags } = useStrategyEngine()
 
 // 是否启用
 const isActive = ref(true)
@@ -28,8 +22,7 @@ const showDeleteModal = ref(false)
 const pendingDeleteId = ref<number | null>(null)
 
 // 3. 定义对外事件
-const emit = defineEmits(['save'])
-
+const emit = defineEmits(['save', 'tag-dropped', 'time-warning'])
 
 // 开关切换函数
 const toggleStatus = () => {
@@ -51,26 +44,43 @@ const confirmDelete = () => {
 }
 
 const triggerTitleError = () => {
-  isTitleError.value = true;
+  isTitleError.value = true
   // 3秒后自动取消错误高亮
   setTimeout(() => {
-    isTitleError.value = false;
-  }, 1000);
+    isTitleError.value = false
+  }, 1000)
 }
 // 对外暴露
-defineExpose({ triggerTitleError });
+defineExpose({ triggerTitleError })
 
 // 监听输入
 watch(tagName, (newVal) => {
   if (newVal.trim() !== '') {
-    isTitleError.value = false;
+    isTitleError.value = false
   }
-});
+})
+// 接受ATOM发送的拖拽事件，并发送给TagLabView
+const onDrop = (event: DragEvent) => {
+  event.preventDefault()
+  const rawData = event.dataTransfer?.getData('application/json')
+  console.log('📦 降落场收到数据:', rawData)
+  if (rawData) {
+    const atom = JSON.parse(rawData)
+
+    // 1. 发送正常的“添加标签”事件
+    emit('tag-dropped', atom)
+
+    // 2. 💡 核心：如果字段包含 time，发射预警信号
+    if (atom.name.toLowerCase().includes('time')) {
+      console.log('⚠️ 识别为时间字段，准备发射警告');
+      emit('time-warning', atom.label)
+    }
+  }
+}
 </script>
 
 <template>
-  <section class="canvas-area">
-
+  <section class="canvas-area" @dragover.prevent @drop="onDrop">
     <div class="canvas-top-bar">
       <input
         type="text"
@@ -80,11 +90,7 @@ watch(tagName, (newVal) => {
         placeholder="请输入标签名称"
       />
 
-      <div
-        class="status-badge"
-        :class="{ 'is-inactive': !isActive }"
-        @click="toggleStatus"
-      >
+      <div class="status-badge" :class="{ 'is-inactive': !isActive }" @click="toggleStatus">
         <span class="dot"></span>
         STATUS: {{ isActive ? 'ACTIVE' : 'INACTIVE' }}
       </div>
@@ -390,9 +396,16 @@ status-badge {
 
 /* 简单的抖动动画，增强视觉干扰 */
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-4px); }
-  75% { transform: translateX(4px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
+  }
 }
 
 /* 修改 Placeholder 颜色，提醒更明显 */
@@ -409,8 +422,13 @@ status-badge {
 }
 
 @keyframes popIn {
-  0% { transform: scale(0.8); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
-
 </style>

@@ -8,32 +8,30 @@ import ATOM from '@/components/Atom.vue' // 左侧：资产库
 import CanvasAtom from '@/components/CanvasAtom.vue' // 中间：编排区
 import ArchiveAtom from '@/components/ArchiveAtom.vue' // 右侧：存档区
 import { useAtomLibrary } from '@/composables/useAtomLibrary'
-const { currentTable } = useAtomLibrary() // 获取当前选中的表名
-const { tagName, preparePayload, groups, resetCanvas } = useStrategyEngine() // 共享的引擎状态
-// 1. 初始化逻辑大脑
-const { saveStrategyMock, isSyncing } = useArchives()
-
-// 引入我们之前写好的核心大脑
 import { useArchives } from '@/composables/useArchives'
 import { useStrategyEngine } from '@/composables/useStrategyEngine'
+import ToastAtom from '@/components/ToastAtom.vue'
 const canvasRef = ref<any>(null)
 /**
  * 核心交互：处理保存申请
  * 当 CanvasAtom 发出 @save 事件时触发
  */
 
+const { currentTable } = useAtomLibrary() // 获取当前选中的表名
+const { tagName, preparePayload, groups, resetCanvas } = useStrategyEngine() // 共享的引擎状态
+
+const { saveStrategyMock, isSyncing } = useArchives()
 const onHandleSave = async (tableName: string) => {
   if (!tagName.value || tagName.value.trim() === '') {
     // 触发输入框的错误状态（见第二步）
     canvasRef.value?.triggerTitleError()
     // 可以弹出一个简单的提示，或者使用我们之前的 Toast
-    return;
+    return
   }
 
   const targetTable = currentTable.value
   // 1. 准备数据包
   const payload = preparePayload(targetTable)
-
 
   // 2. 调用存档服务进行同步
   const result = await saveStrategyMock(payload, groups.value, tableName)
@@ -67,29 +65,41 @@ const onHandleLoad = (record: any) => {
   // 4. 增加一个“加载成功”的小提示 (可选)
   successMessage.value = `STRATEGY "${record.title}" RESTORED`
   showSuccessToast.value = true
-  setTimeout(() => { showSuccessToast.value = false }, 2000)
+  setTimeout(() => {
+    showSuccessToast.value = false
+  }, 2000)
 }
 
-// /**
-//  * 核心交互：处理存档回填
-//  * 当 ArchiveAtom 发出 @load 事件时触发
-//  */
-// const onHandleLoad = (record: any) => {
-//   // 将存档数据“瞬移”回画布
-//   groups.value = record.logicData
-//   tagName.value = record.title
-//   // 这里可以根据需要通知 ATOM.vue 切换数据源
-// }
+const showToast = ref(false)
+const toastMsg = ref('')
+
+const handleTimeWarning = (label: string) => {
+  console.log('📢 指挥部收到警告信号，准备点亮 Toast');
+  // 填充信息，ToastAtom 内部会自动识别并变黄
+  toastMsg.value = `⚠️ 字段检测：[${label}] 是时间类型，请确保输入单位（sec/min/hour/day）`
+  showToast.value = true
+
+  // 4秒后自动关闭
+  setTimeout(() => {
+    showToast.value = false
+  }, 4000)
+}
 </script>
 
 <template>
   <div class="aether-container">
+    <ToastAtom :show="showToast" :message="toastMsg" />
     <MainHeader />
 
     <main class="main-content">
       <ATOM />
 
-      <CanvasAtom :is-loading="isSyncing" ref="canvasRef" @save="(table) => onHandleSave(table)" />
+      <CanvasAtom
+        :is-loading="isSyncing"
+        ref="canvasRef"
+        @save="(table) => onHandleSave(table)"
+        @time-warning="handleTimeWarning"
+      />
 
       <ArchiveAtom @load="onHandleLoad" />
     </main>

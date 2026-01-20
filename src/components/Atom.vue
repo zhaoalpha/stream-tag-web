@@ -40,6 +40,15 @@ const handleSearchBlur = () => {
     isSearchActive.value = false
   }
 }
+
+// 处理拖拽字段，将事件发出 由组件处理
+const handleDragStart = (event: DragEvent, atom: any) => {
+  console.log('🛫 开始拖拽字段:', atom.name);
+  event.dataTransfer?.setData('application/json', JSON.stringify(atom));
+  // 设置拖拽视觉效果
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+};
+
 </script>
 
 <template>
@@ -72,7 +81,7 @@ const handleSearchBlur = () => {
           ref="searchInput"
           v-model="searchQuery"
           type="text"
-          placeholder="FILTER ATOMS..."
+          placeholder="筛选字段..."
           class="search-input"
           @blur="handleSearchBlur"
         />
@@ -86,11 +95,12 @@ const handleSearchBlur = () => {
           :key="atom.id"
           :name="atom.name"
           :label="atom.label"
+          @dragstart="handleDragStart($event, atom)"
         />
       </TransitionGroup>
 
       <div v-if="filteredAtoms.length === 0" class="no-results">
-        {{ searchQuery ? 'NO ATOMS MATCHED' : 'LIBRARY IS EMPTY' }}
+        {{ searchQuery ? '无匹配字段' : '空' }}
       </div>
     </div>
   </aside>

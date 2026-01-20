@@ -18,8 +18,8 @@ const handleDragStart = (event: DragEvent) => {
 
 <template>
   <div class="atom-card" draggable="true" @dragstart="handleDragStart">
-    <div class="atom-name">{{ name }}</div>
-    <div class="atom-label">{{ label }}</div>
+    <div class="atom-name">{{ label }}</div>
+    <div class="atom-label">{{ name }}</div>
   </div>
 </template>
 
