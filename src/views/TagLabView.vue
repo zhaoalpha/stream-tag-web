@@ -12,6 +12,8 @@ import { useArchives } from '@/composables/useArchives'
 import { useStrategyEngine } from '@/composables/useStrategyEngine'
 import ToastAtom from '@/components/ToastAtom.vue'
 const canvasRef = ref<any>(null)
+import { useToast } from '@/composables/useToast'
+const toast = useToast()
 /**
  * 核心交互：处理保存申请
  * 当 CanvasAtom 发出 @save 事件时触发
@@ -20,8 +22,8 @@ const canvasRef = ref<any>(null)
 const { currentTable } = useAtomLibrary() // 获取当前选中的表名
 const { tagName, preparePayload, groups, resetCanvas } = useStrategyEngine() // 共享的引擎状态
 
-const { saveStrategyMock, isSyncing } = useArchives()
-const onHandleSave = async (tableName: string) => {
+const { saveStrategy, isSyncing } = useArchives()
+const onHandleSave = async () => {
   if (!tagName.value || tagName.value.trim() === '') {
     // 触发输入框的错误状态（见第二步）
     canvasRef.value?.triggerTitleError()
@@ -32,13 +34,20 @@ const onHandleSave = async (tableName: string) => {
   const targetTable = currentTable.value
   // 1. 准备数据包
   const payload = preparePayload(targetTable)
+  try {
+    // 2. 调用存档服务进行同步
+    const result = await saveStrategy(payload, groups.value, targetTable)
 
-  // 2. 调用存档服务进行同步
-  const result = await saveStrategyMock(payload, groups.value, tableName)
-
-  if (result.success) {
-    // 3. 保存成功后，执行画布重置动画
-    resetCanvas()
+    if (result.success) {
+      // 💡 成功调用
+      toast.success('策略存储成功，计算已就绪')
+      resetCanvas()
+    } else {
+      // 💡 失败调用
+      toast.error('策略存储失败：后端返回数据异常')
+    }
+  } catch (e) {
+    toast.error('CRITICAL ERROR: 服务器响应超时')
   }
 }
 
@@ -52,8 +61,6 @@ const onHandleLoad = (record: any) => {
   // 1. 恢复标题
   tagName.value = record.title
 
-  // 2. 恢复策略逻辑 (核心关键：使用 JSON 转换进行深拷贝)
-  // 💡 为什么要深拷贝？为了防止修改画布时，意外改掉右侧存档列表里的原始数据
   groups.value = JSON.parse(JSON.stringify(record.logicData))
 
   // 3. 联动左侧：自动切换到该存档所属的数据表
@@ -74,11 +81,10 @@ const showToast = ref(false)
 const toastMsg = ref('')
 
 const handleTimeWarning = (label: string) => {
-  console.log('📢 指挥部收到警告信号，准备点亮 Toast');
   // 填充信息，ToastAtom 内部会自动识别并变黄
-  toastMsg.value = `⚠️ 字段检测：[${label}] 是时间类型，请确保输入单位（sec/min/hour/day）`
-  showToast.value = true
-
+  // toastMsg.value = `⚠️ 字段检测：[${label}] 是时间类型，请确保输入单位（sec/min/hour/day）`
+  // showToast.value = true
+  toast.warning(`⚠️ 字段检测：[${label}] 是时间类型，请确保输入单位（sec/min/hour/day)`)
   // 4秒后自动关闭
   setTimeout(() => {
     showToast.value = false
@@ -89,15 +95,13 @@ const handleTimeWarning = (label: string) => {
 <template>
   <div class="aether-container">
     <ToastAtom :show="showToast" :message="toastMsg" />
-    <MainHeader />
-
     <main class="main-content">
       <ATOM />
 
       <CanvasAtom
         :is-loading="isSyncing"
         ref="canvasRef"
-        @save="(table) => onHandleSave(table)"
+        @save="onHandleSave()"
         @time-warning="handleTimeWarning"
       />
 

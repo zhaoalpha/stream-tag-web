@@ -1,45 +1,42 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { CheckCircle2, ShieldAlert, Zap } from 'lucide-vue-next'
+import { CheckCircle2, ShieldAlert, XCircle, Zap } from 'lucide-vue-next'
+import { useToast } from '@/composables/useToast'
 
-const props = defineProps<{
-  show: boolean
-  message: string
-}>()
+const { isShow, msg, toastType } = useToast()
 
-/**
- * 如果消息包含“时间”、“注意”或“⚠️”，自动切换为琥珀黄警告风格
- */
-const isWarning = computed(() => {
-  const msg = props.message.toLowerCase()
-  console.log('===',msg)
-  return msg.includes('time') || msg.includes('注意') || msg.includes('⚠️') || msg.includes('毫秒')
-})
+// 映射文案标题
+const labelMap = {
+  success: '成功',
+  warning: '警告',
+  error: '错误'
+}
 </script>
 
 <template>
   <Teleport to="body">
     <Transition name="toast-pop">
-      <div v-if="show" class="toast-wrapper" :class="{ 'is-warning': isWarning }">
-        <div class="toast-inner">
+      <div v-if="isShow" class="toast-wrapper" :class="[`is-${toastType}`]">
+        <div class="toast-inner center-layout">
+
           <div class="icon-container">
             <Transition name="icon-fade" mode="out-in">
-              <ShieldAlert v-if="isWarning" :size="20" class="status-icon warn" />
-              <CheckCircle2 v-else :size="20" class="status-icon success" />
+              <CheckCircle2 v-if="toastType === 'success'" :size="24" class="status-icon success" />
+              <ShieldAlert v-else-if="toastType === 'warning'" :size="24" class="status-icon warn" />
+              <XCircle v-else :size="24" class="status-icon error" />
             </Transition>
           </div>
 
           <div class="content-box">
-            <div class="terminal-header">
+            <div class="terminal-header centered">
               <Zap :size="10" class="zap-icon" />
-              <span class="system-label">{{ isWarning ? 'SYSTEM ADVISORY' : 'TRANSACTION COMPLETE' }}</span>
+              <span class="system-label">{{ labelMap[toastType] }}</span>
             </div>
-            <p class="message-text">{{ message }}</p>
+            <p class="message-text centered">{{ msg }}</p>
           </div>
         </div>
 
         <div class="progress-track">
-          <div class="progress-fill" :class="{ 'warn-bg': isWarning }"></div>
+          <div class="progress-fill" :class="[`${toastType}-bg`]"></div>
         </div>
       </div>
     </Transition>
@@ -47,115 +44,102 @@ const isWarning = computed(() => {
 </template>
 
 <style scoped>
-/* 核心容器：悬浮于银河之上  */
 .toast-wrapper {
   position: fixed;
-  top: 40px;
+  top: 60px; /* 稍微调低一点，视觉上更稳 */
   left: 50%;
   transform: translateX(-50%);
   z-index: 99999;
-
-  min-width: 320px;
-  background: rgba(10, 10, 10, 0.75);
-  backdrop-filter: blur(25px) saturate(180%);
-  border: 1px solid rgba(0, 255, 170, 0.3); /* 默认成功绿边 */
+  min-width: 380px; /* 增加一点宽度适配长标题 */
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(20px) saturate(150%);
   border-radius: 16px;
-  padding: 16px;
-  box-shadow:
-    0 24px 48px rgba(0, 0, 0, 0.5),
-    0 0 20px rgba(0, 255, 170, 0.05);
-  overflow: hidden;
-  transition: border-color 0.4s ease;
+  padding: 12px 16px;
+  border: 1px solid transparent;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
 }
 
-/* 警告状态覆盖样式 */
-.toast-wrapper.is-warning {
-  border-color: rgba(255, 191, 0, 0.4); /* 琥珀黄边框 */
-  box-shadow:
-    0 24px 48px rgba(0, 0, 0, 0.5),
-    0 0 20px rgba(255, 191, 0, 0.05);
-}
-
-.toast-inner {
+/* --- 核心布局：改为垂直排列并居中 --- */
+.center-layout {
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
+  flex-direction: column; /* 👈 改为纵向排列 */
+  align-items: center;    /* 👈 水平居中 */
+  gap: 8px;
 }
 
-/* 图标容器 */
+.content-box {
+  width: 100%;
+}
+
+.terminal-header.centered {
+  display: flex;
+  align-items: center;
+  justify-content: center; /* 👈 标题栏内部居中 */
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.message-text.centered {
+  text-align: center;      /* 👈 文案文字居中 */
+  margin: 0;
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+/* --- 状态颜色 --- */
+.is-success { border-color: rgba(0, 255, 170, 0.4); }
+.is-warning { border-color: rgba(255, 191, 0, 0.4); }
+.is-error   { border-color: rgba(255, 77, 79, 0.4); }
+
+.status-icon.success { color: #00ffaa; filter: drop-shadow(0 0 8px #00ffaa); }
+.status-icon.warn    { color: #ffbf00; filter: drop-shadow(0 0 8px #ffbf00); }
+.status-icon.error   { color: #ff4d4f; filter: drop-shadow(0 0 8px #ff4d4f); }
+
+.success-bg { background: #00ffaa; }
+.warning-bg { background: #ffbf00; }
+.error-bg   { background: #ff4d4f; }
+
+/* --- 装饰细节 --- */
 .icon-container {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: 12px;
+  border-radius: 50%; /* 圆形容器更适合垂直对齐 */
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.status-icon.success { color: #00ffaa; filter: drop-shadow(0 0 5px rgba(0, 255, 170, 0.5)); }
-.status-icon.warn { color: #ffbf00; filter: drop-shadow(0 0 5px rgba(255, 191, 0, 0.5)); }
-
-/* 文本排版 */
-.content-box {
-  flex: 1;
-}
-
-.terminal-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.zap-icon { color: rgba(255, 255, 255, 0.4); }
-
 .system-label {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.4);
+  font-family: 'JetBrains Mono', monospace; /* 强制等宽字体 */
+  font-size: 8px;
   letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
 }
 
-.message-text {
-  margin: 0;
-  color: #fff;
-  font-size: 13px;
-  line-height: 1.4;
-  font-weight: 500;
-}
-
-/* 进度条动画  */
 .progress-track {
   position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 2px;
+  height: 3px;
   background: rgba(255, 255, 255, 0.05);
 }
 
 .progress-fill {
   height: 100%;
-  background: #00ffaa;
   width: 100%;
-  animation: shrink 3.5s linear forwards; /* 稍长于 3s 确保平滑 */
+  animation: shrink 3s linear forwards;
 }
 
-.progress-fill.warn-bg { background: #ffbf00; }
+@keyframes shrink { from { width: 100%; } to { width: 0%; } }
 
-@keyframes shrink {
-  from { width: 100%; }
-  to { width: 0%; }
-}
-
-/* 进出场动画：轻微缩放+平移 */
-.toast-pop-enter-from { opacity: 0; transform: translate(-50%, -40px) scale(0.95); }
-.toast-pop-enter-to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+/* 进场动画：从上方滑入并略微放大 */
+.toast-pop-enter-active { transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
+.toast-pop-leave-active { transition: all 0.4s ease-in; }
+.toast-pop-enter-from { opacity: 0; transform: translate(-50%, -40px) scale(0.9); }
 .toast-pop-leave-to { opacity: 0; transform: translate(-50%, -20px) scale(0.95); }
-.toast-pop-enter-active, .toast-pop-leave-active {
-  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-}
 </style>

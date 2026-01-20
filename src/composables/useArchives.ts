@@ -3,8 +3,8 @@
  * 既支持纯前端测试，又保留了 UI 所需的所有响应式接口
  */
 import { ref, computed } from 'vue'
+import { tagApi } from '@/api/tag'
 
-// 💡 关键 1：数据放在函数外，确保全局单例，所有组件共享同一份存档数据
 const archives = ref([
   {
     id: 1,
@@ -69,14 +69,58 @@ export function useArchives() {
     return { success: true }
   }
 
+  const saveStrategy = async (payload: any, logicData: any, tableName: string) => {
+    isSyncing.value = true
+
+    // 构造后端需要的标准 JSON 结构
+    const submitData = {
+      title: payload.title || '未命名策略',
+      table: tableName.toLowerCase(),
+      // 2. 映射规则字段
+      groups: logicData.map((group: any) => ({
+        // 1. 将逻辑转为小写 (AND -> and)
+        logic: group.logic.toLowerCase(),
+
+        // 2. 映射规则字段 (将 tags 转换为 rules)
+        rules: group.tags.map((tag: any) => ({
+          field: tag.name, // 对应后端的字段标识 (如 age)
+          operator: tag.operator,
+          value: tag.value,
+        })),
+      })),
+    }
+    try {
+      const res: any = await tagApi.saveStrategy(submitData)
+      // 保存成功后，为了保证数据最准，我们重新拉取一次列表
+      const newArchiveItem = {
+        id: res.data?.id || Date.now(), // 优先用后端 ID，没有就用时间戳
+        title: submitData.title,
+        time: new Date().toLocaleString(),
+        tableName: submitData.table,
+        totalCount: res.toLocaleString(),
+        status: 'active' as const,
+        logicData: JSON.parse(JSON.stringify(logicData)), // 深度克隆当前画布的逻辑，用于以后回填
+      }
+
+      // 5. 将新数据直接压入 archives 列表的最顶部
+      archives.value.unshift(newArchiveItem)
+      return { success: true }
+    } catch (error) {
+      console.error('保存失败:', error)
+      return { success: false, error }
+    } finally {
+      isSyncing.value = false
+    }
+  }
+
   // 💡 必须导出 UI 正在使用的所有变量
   return {
     archives,
-    filteredArchives, // 👈 修复 length 报错的关键：模板在循环这个！
+    filteredArchives,
     isSyncing,
-    isArchiveSearchActive, // 👈 修复搜索图标点击无效
-    archiveSearchQuery, // 👈 修复搜索输入无效
+    isArchiveSearchActive,
+    archiveSearchQuery,
     toggleArchiveSearch,
-    saveStrategyMock,
+    saveStrategy,
   }
 }

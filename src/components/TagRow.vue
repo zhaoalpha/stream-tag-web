@@ -7,6 +7,7 @@ const props = defineProps<{
   tagData: {
     activeId: number
     name: string
+    label: string
     operator: string
     value: string
   }
@@ -59,7 +60,9 @@ import { X } from 'lucide-vue-next'
 
 <template>
   <div class="tag-row" :class="{ 'is-dropdown-active': isOpOpen }" @mouseleave="closeDropdown">
-    <div class="tag-name">{{ tagData.name }}</div>
+    <div class="tag-name" :title="tagData.name">
+      {{ tagData.label }}
+    </div>
 
     <div class="custom-op-selector">
       <div class="op-trigger" :class="{ 'is-active': isOpOpen }" @click="toggleDropdown">

@@ -17,6 +17,12 @@ export function useAtomLibrary() {
       { id: 5, name: 'trans_time', label: '交易时间' },
       { id: 6, name: 'trans_amount', label: '交易金额' },
       { id: 7, name: 'regist_from_name', label: '注册渠道' },
+      { id: 8, name: 'sku_preferred', label: '商品偏好' },
+      { id: 9, name: 'category_preferred', label: '品类偏好' },
+      { id: 10, name: 'price_sensitivity_score', label: '用户价格敏感度' },
+      { id: 11, name: 'churn_probability', label: '用户流失概率' },
+      { id: 12, name: 'delinquency_probability', label: '用户逾期风险概率' },
+      { id: 13, name: 'return_probability', label: '用户退货概率' },
     ],
     order_info: [
       { id: 101, name: 'pay_amt', label: '累计消费金额' },

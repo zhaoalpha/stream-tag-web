@@ -50,10 +50,6 @@ export function useStrategyEngine() {
    * 逻辑：将 UI 结构转化为后端 Java 环境所需的扁平格式
    */
   const preparePayload = (tableName: string) => {
-    console.log('--- 开始封装 Payload ---');
-    console.log('当前标题 (tagName):', tagName.value);
-    console.log('当前组数据 (groups):', groups.value);
-
     return {
       title: tagName.value === '请输入标签名称' ? '未命名策略' : tagName.value,
       table: tableName.toLowerCase(),
