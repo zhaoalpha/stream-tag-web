@@ -6,6 +6,7 @@ import SegmentView from '@/views/SegmentView.vue'
 import Dashboard from '@/views/view.vue'
 import Notification from '@/views/Notification.vue'
 import Main from '@/views/Main.vue'
+import AIChatAtom from '@/components/AIChatAtom.vue'
 // 1. 当前选中的页面 ID
 const currentTab = ref('home')
 
@@ -23,7 +24,7 @@ const activeView = computed(() => {
 <template>
   <div class="aether-container">
     <MainHeader :active-id="currentTab" @change="(id) => (currentTab = id)" />
-
+    <AIChatAtom />
     <Transition name="page-glassy" mode="out-in">
       <component :is="activeView" />
     </Transition>

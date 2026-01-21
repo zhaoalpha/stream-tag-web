@@ -12,8 +12,29 @@ const tagName = ref('')
 // 2. 核心状态：分组列表
 const groups = ref<Group[]>([{ id: Date.now(), logic: 'AND', tags: [] }])
 
-
 export function useStrategyEngine() {
+  // 点击AI对话 自动拖入
+  const injectSpecificTag = () => {
+    const targetTag = {
+      activeId: Date.now(),
+      name: 'trans_amount', // 英文标识：后端识别
+      label: '交易金额', // 中文显示：前端展示
+      operator: '>', // 指定操作符
+      value: '5000', // 指定数值
+    }
+
+    // 1. 检查是否存在分组，没有则初始化一个
+    if (groups.value.length === 0) {
+      groups.value.push({ id: Date.now(), logic: 'AND', tags: [] })
+    }
+
+    // 2. 注入到第一个逻辑组中
+    groups.value[0].tags.push(targetTag)
+
+    // 3. 返回当前的最新逻辑结构，供保存使用
+    return JSON.parse(JSON.stringify(groups.value))
+  }
+
   /**
    * 功能：新增策略组
    * 逻辑：确保 ID 唯一，默认逻辑为 'AND'
@@ -76,6 +97,7 @@ export function useStrategyEngine() {
   return {
     tagName,
     groups,
+    injectSpecificTag,
     addStrategyGroup,
     removeGroup,
     updateGroupTags,

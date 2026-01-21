@@ -5,7 +5,7 @@
       <div class="center-content">
         <section class="workspace-header">
           <div class="header-left">
-            <h2 class="page-title">AUDIENCE_UNIVERSE</h2>
+            <h2 class="page-title">分群矩阵</h2>
             <span class="count-badge">{{ audienceGroups.length }} 个活跃人群包</span>
           </div>
           <div class="header-center">
